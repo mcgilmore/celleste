@@ -1,4 +1,4 @@
-use clap::{command, Arg};
+use clap::Arg;
 use ggez::event::{self, EventHandler};
 use ggez::graphics::{self, Canvas, Color, DrawParam, Mesh};
 use ggez::{
@@ -6,7 +6,6 @@ use ggez::{
     input::mouse::MouseButton,
     Context, ContextBuilder, GameResult,
 };
-use std::ops::Add;
 
 #[derive(Clone, Copy)]
 struct Cell {
@@ -291,7 +290,7 @@ fn main() -> GameResult {
         .window_mode(ggez::conf::WindowMode::default().dimensions(screen_width, screen_height));
     let (ctx, event_loop) = cb.build()?;
 
-    let mut game =
+    let game =
         BelousovZhabotinsky::new(width, height, cell_size, diff_a, diff_b, diff_c, feed, kill);
     event::run(ctx, event_loop, game)
 }
