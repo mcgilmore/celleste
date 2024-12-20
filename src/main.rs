@@ -1,14 +1,13 @@
 use ggez::{Context, ContextBuilder, GameResult, input::keyboard::{KeyCode, KeyInput}};
 use ggez::event::{self, EventHandler};
 use ggez::graphics::{self, Canvas, Color, DrawParam, Mesh};
-use std::ops::Add;
 
 const WIDTH: usize = 400;
 const HEIGHT: usize = 400;
-const DIFF_A: f32 = 2.0; // Diffusion rate for chemical A
-const DIFF_B: f32 = 1.0; // Diffusion rate for chemical B
-const DIFF_C: f32 = 0.6; // Diffusion rate for chemical C
-const FEED: f32 = 0.04;
+const DIFF_A: f32 = 1.0; // Diffusion rate for chemical A
+const DIFF_B: f32 = 0.5; // Diffusion rate for chemical B
+const DIFF_C: f32 = 0.3; // Diffusion rate for chemical C
+const FEED: f32 = 0.055;
 const KILL: f32 = 0.062;
 
 #[derive(Clone, Copy)]
@@ -102,29 +101,33 @@ impl EventHandler for BelousovZhabotinsky {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let mut canvas = Canvas::from_frame(ctx, Color::BLACK);
-
+    
+        let mut mesh_builder = graphics::MeshBuilder::new();
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
                 let cell = self.grid[y][x];
                 let intensity_a = (cell.a.clamp(0.0, 1.0) * 255.0) as u8;
                 let intensity_b = (cell.b.clamp(0.0, 1.0) * 255.0) as u8;
                 let intensity_c = (cell.c.clamp(0.0, 1.0) * 255.0) as u8;
-
+    
                 let color = Color::from_rgb(intensity_a, intensity_b, intensity_c);
-
+    
                 let rect = graphics::Rect::new(
                     x as f32 * self.cell_size,
                     y as f32 * self.cell_size,
                     self.cell_size,
                     self.cell_size,
                 );
-                let rectangle = Mesh::new_rectangle(ctx, graphics::DrawMode::fill(), rect, color)?;
-                canvas.draw(&rectangle, DrawParam::default());
+    
+                mesh_builder.rectangle(graphics::DrawMode::fill(), rect, color);
             }
         }
-
+    
+        let mesh_data = mesh_builder.build(); // Create MeshData
+        let mesh = Mesh::from_data(ctx, mesh_data); // Convert MeshData to Mesh
+        canvas.draw(&mesh, DrawParam::default());
         canvas.finish(ctx)
-    }
+    }    
 
     fn key_down_event(&mut self, _ctx: &mut Context, key_input: KeyInput, _repeat: bool) -> GameResult {
         if let Some(keycode) = key_input.keycode {
@@ -142,6 +145,6 @@ fn main() -> GameResult {
         .window_mode(ggez::conf::WindowMode::default().dimensions(800.0, 800.0));
     let (ctx, event_loop) = cb.build()?;
 
-    let mut game = BelousovZhabotinsky::new(4.0);
+    let game = BelousovZhabotinsky::new(4.0);
     event::run(ctx, event_loop, game)
 }
