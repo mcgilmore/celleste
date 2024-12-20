@@ -1,7 +1,11 @@
-use ggez::{Context, ContextBuilder, GameResult, input::keyboard::{KeyCode, KeyInput}, input::mouse::MouseButton};
+use clap::{command, Arg};
 use ggez::event::{self, EventHandler};
 use ggez::graphics::{self, Canvas, Color, DrawParam, Mesh};
-use clap::{command, Arg};
+use ggez::{
+    input::keyboard::{KeyCode, KeyInput},
+    input::mouse::MouseButton,
+    Context, ContextBuilder, GameResult,
+};
 use std::ops::Add;
 
 #[derive(Clone, Copy)]
@@ -26,22 +30,43 @@ struct BelousovZhabotinsky {
 }
 
 impl BelousovZhabotinsky {
-    fn new(width: usize, height: usize, cell_size: f32, diff_a: f32, diff_b: f32, diff_c: f32, feed: f32, kill: f32) -> Self {
-        let mut grid = vec![vec![Cell { a: 1.0, b: 0.0, c: 0.0 }; width]; height];
+    fn new(
+        width: usize,
+        height: usize,
+        cell_size: f32,
+        diff_a: f32,
+        diff_b: f32,
+        diff_c: f32,
+        feed: f32,
+        kill: f32,
+    ) -> Self {
+        let mut grid = vec![
+            vec![
+                Cell {
+                    a: 1.0,
+                    b: 0.0,
+                    c: 0.0
+                };
+                width
+            ];
+            height
+        ];
 
         // Seed the initial reaction in the center
         let center_y = height / 2;
         let center_x = width / 2;
-        
+
         for y in (center_y - 5)..(center_y + 5) {
             for x in (center_x - 5)..(center_x + 5) {
                 if y < height && x < width {
-                    grid[y][x] = Cell { a: 0.5, b: 0.25, c: 0.0 };
-                    println!("Seeding at ({}, {})", x, y);
+                    grid[y][x] = Cell {
+                        a: 0.5,
+                        b: 0.25,
+                        c: 0.0,
+                    };
                 }
             }
         }
-
 
         Self {
             next_grid: grid.clone(),
@@ -72,8 +97,12 @@ impl BelousovZhabotinsky {
                 let reaction_ab = cell.a * cell.b * cell.b;
                 let reaction_bc = cell.b * cell.c * cell.c;
 
-                let new_a = cell.a + (self.diff_a * laplace_a - reaction_ab + self.feed * (1.0 - cell.a));
-                let new_b = cell.b + (self.diff_b * laplace_b + reaction_ab - reaction_bc - (self.kill + self.feed) * cell.b);
+                let new_a =
+                    cell.a + (self.diff_a * laplace_a - reaction_ab + self.feed * (1.0 - cell.a));
+                let new_b = cell.b
+                    + (self.diff_b * laplace_b + reaction_ab
+                        - reaction_bc
+                        - (self.kill + self.feed) * cell.b);
                 let new_c = cell.c + (self.diff_c * laplace_c + reaction_bc - self.kill * cell.c);
 
                 self.next_grid[y][x] = Cell {
@@ -83,8 +112,6 @@ impl BelousovZhabotinsky {
                 };
             }
         }
-
-        // Swap the grids
         std::mem::swap(&mut self.grid, &mut self.next_grid);
     }
 
@@ -115,7 +142,11 @@ impl BelousovZhabotinsky {
                     let nx = grid_x as isize + dx;
                     let ny = grid_y as isize + dy;
                     if nx >= 0 && nx < self.width as isize && ny >= 0 && ny < self.height as isize {
-                        self.grid[ny as usize][nx as usize] = Cell { a: 0.5, b: 0.25, c: 0.0 };
+                        self.grid[ny as usize][nx as usize] = Cell {
+                            a: 0.5,
+                            b: 0.25,
+                            c: 0.0,
+                        };
                     }
                 }
             }
@@ -133,7 +164,7 @@ impl EventHandler for BelousovZhabotinsky {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let mut canvas = Canvas::from_frame(ctx, Color::BLACK);
-    
+
         let mut mesh_builder = graphics::MeshBuilder::new();
         for y in 0..self.height {
             for x in 0..self.width {
@@ -141,29 +172,32 @@ impl EventHandler for BelousovZhabotinsky {
                 let intensity_a = (cell.a.clamp(0.0, 1.0) * 160.0) as u8;
                 let intensity_b = (cell.b.clamp(0.0, 1.0) * 255.0) as u8;
                 let intensity_c = (cell.c.clamp(0.0, 1.0) * 255.0) as u8;
-    
+
                 let color = Color::from_rgb(intensity_a, intensity_b, intensity_c);
-    
+
                 let rect = graphics::Rect::new(
                     x as f32 * self.cell_size,
                     y as f32 * self.cell_size,
                     self.cell_size,
                     self.cell_size,
                 );
-    
+
                 mesh_builder.rectangle(graphics::DrawMode::fill(), rect, color);
             }
         }
-    
+
         let mesh_data = mesh_builder.build(); // Create MeshData
         let mesh = Mesh::from_data(ctx, mesh_data); // Convert MeshData to Mesh
         canvas.draw(&mesh, DrawParam::default());
         canvas.finish(ctx)
     }
-    
-    
 
-    fn key_down_event(&mut self, _ctx: &mut Context, key_input: KeyInput, _repeat: bool) -> GameResult {
+    fn key_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        key_input: KeyInput,
+        _repeat: bool,
+    ) -> GameResult {
         if let Some(keycode) = key_input.keycode {
             if keycode == KeyCode::Space {
                 self.running = !self.running;
@@ -172,7 +206,13 @@ impl EventHandler for BelousovZhabotinsky {
         Ok(())
     }
 
-    fn mouse_button_down_event(&mut self, _ctx: &mut Context, button: MouseButton, x: f32, y: f32) -> GameResult {
+    fn mouse_button_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        button: MouseButton,
+        x: f32,
+        y: f32,
+    ) -> GameResult {
         if button == MouseButton::Left {
             self.seed_reaction(x, y);
         }
@@ -246,11 +286,12 @@ fn main() -> GameResult {
 
     let cell_size = (screen_width / width as f32).min(screen_height / height as f32);
 
-    let cb = ContextBuilder::new("bz_reaction", "Author")
-        .window_setup(ggez::conf::WindowSetup::default().title("Belousov-Zhabotinsky Reaction"))
+    let cb = ContextBuilder::new("bzr", "Author")
+        .window_setup(ggez::conf::WindowSetup::default().title("bzr"))
         .window_mode(ggez::conf::WindowMode::default().dimensions(screen_width, screen_height));
     let (ctx, event_loop) = cb.build()?;
 
-    let mut game = BelousovZhabotinsky::new(width, height, cell_size, diff_a, diff_b, diff_c, feed, kill);
+    let mut game =
+        BelousovZhabotinsky::new(width, height, cell_size, diff_a, diff_b, diff_c, feed, kill);
     event::run(ctx, event_loop, game)
 }
