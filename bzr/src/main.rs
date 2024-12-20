@@ -224,6 +224,7 @@ fn main() -> GameResult {
         .arg(
             Arg::new("width")
                 .long("width")
+                .short('x')
                 .value_parser(clap::value_parser!(usize))
                 .default_value("400")
                 .help("Set the grid width"),
@@ -231,6 +232,7 @@ fn main() -> GameResult {
         .arg(
             Arg::new("height")
                 .long("height")
+                .short('y')
                 .value_parser(clap::value_parser!(usize))
                 .default_value("400")
                 .help("Set the grid height"),
@@ -238,6 +240,7 @@ fn main() -> GameResult {
         .arg(
             Arg::new("diff_a")
                 .long("diff_a")
+                .short('a')
                 .value_parser(clap::value_parser!(f32))
                 .default_value("1.0")
                 .help("Set the diffusion rate for chemical A"),
@@ -245,6 +248,7 @@ fn main() -> GameResult {
         .arg(
             Arg::new("diff_b")
                 .long("diff_b")
+                .short('b')
                 .value_parser(clap::value_parser!(f32))
                 .default_value("0.5")
                 .help("Set the diffusion rate for chemical B"),
@@ -252,6 +256,7 @@ fn main() -> GameResult {
         .arg(
             Arg::new("diff_c")
                 .long("diff_c")
+                .short('c')
                 .value_parser(clap::value_parser!(f32))
                 .default_value("0.3")
                 .help("Set the diffusion rate for chemical C"),
@@ -259,6 +264,7 @@ fn main() -> GameResult {
         .arg(
             Arg::new("feed")
                 .long("feed")
+                .short('f')
                 .value_parser(clap::value_parser!(f32))
                 .default_value("0.055")
                 .help("Set the feed rate"),
@@ -266,6 +272,7 @@ fn main() -> GameResult {
         .arg(
             Arg::new("kill")
                 .long("kill")
+                .short('k')
                 .value_parser(clap::value_parser!(f32))
                 .default_value("0.062")
                 .help("Set the kill rate"),
@@ -280,8 +287,8 @@ fn main() -> GameResult {
     let feed = *matches.get_one::<f32>("feed").unwrap();
     let kill = *matches.get_one::<f32>("kill").unwrap();
 
-    let screen_width = 800.0; // Screen dimensions
-    let screen_height = 800.0;
+    let screen_width = 1000.0; // Screen dimensions
+    let screen_height = 1000.0;
 
     let cell_size = (screen_width / width as f32).min(screen_height / height as f32);
 

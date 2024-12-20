@@ -1,3 +1,3 @@
 # automata
 
-Attempts at cellular or chemical automata in rust
+Attempts at cellular or chemical automata in rust with ggez
