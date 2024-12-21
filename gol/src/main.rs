@@ -1,9 +1,12 @@
 use ggez::{Context, ContextBuilder, GameResult, input::keyboard::{KeyCode, KeyInput}, input::mouse::MouseButton};
 use ggez::event::{self, EventHandler};
 use ggez::graphics::{self, Canvas, Color, DrawMode, DrawParam, Mesh};
+use ggez::GameError;
+use serde::{Serialize, Deserialize};
 use std::collections::HashSet;
+use std::fs;
 
-#[derive(Eq, PartialEq, Hash, Clone, Copy)]
+#[derive(Eq, PartialEq, Hash, Clone, Copy, Serialize, Deserialize)]
 struct Cell(i32, i32);
 
 struct GameOfLife {
@@ -84,6 +87,22 @@ impl GameOfLife {
             self.alive_cells.insert(cell);
         }
     }
+
+    fn save_to_file(&self, filename: &str) -> GameResult {
+        let serialized = serde_json::to_string(&self.alive_cells)
+            .map_err(|e| GameError::CustomError(e.to_string()))?;
+        std::fs::write(filename, serialized)
+            .map_err(|e| GameError::CustomError(e.to_string()))?;
+        Ok(())
+    }
+
+    fn load_from_file(&mut self, filename: &str) -> GameResult {
+        let contents = std::fs::read_to_string(filename)
+            .map_err(|e| GameError::CustomError(e.to_string()))?;
+        self.alive_cells = serde_json::from_str(&contents)
+            .map_err(|e| GameError::CustomError(e.to_string()))?;
+        Ok(())
+    }
 }
 
 impl EventHandler for GameOfLife {
@@ -149,8 +168,17 @@ impl EventHandler for GameOfLife {
 
     fn key_down_event(&mut self, _ctx: &mut Context, key_input: KeyInput, _repeat: bool) -> GameResult {
         if let Some(keycode) = key_input.keycode {
-            if keycode == KeyCode::Space {
-                self.running = !self.running;
+            match keycode {
+                KeyCode::Space => {
+                    self.running = !self.running;
+                }
+                KeyCode::S => {
+                    self.save_to_file("game_of_life_state.json")?;
+                }
+                KeyCode::L => {
+                    self.load_from_file("game_of_life_state.json")?;
+                }
+                _ => {}
             }
         }
         Ok(())
@@ -160,12 +188,12 @@ impl EventHandler for GameOfLife {
 fn main() -> GameResult {
     let cb = ContextBuilder::new("game_of_life", "alskdfjsaodjkf")
         .window_setup(ggez::conf::WindowSetup::default().title("Conway's Game of Life"))
-        .window_mode(ggez::conf::WindowMode::default().dimensions(800.0, 600.0));
+        .window_mode(ggez::conf::WindowMode::default().dimensions(1600.0, 1200.0));
     let (ctx, event_loop) = cb.build()?;
 
     let initial_state = vec![
-        Cell(0, 0), Cell(1, 0), Cell(2, 0),
-        Cell(2, 1), Cell(1, 2),
+        Cell(50, 50), Cell(51, 50), Cell(52, 50),
+        Cell(52, 51), Cell(51, 52),
     ];
 
     let game = GameOfLife::new(initial_state, 10.0);
