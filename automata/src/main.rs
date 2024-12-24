@@ -4,12 +4,40 @@ use ggez::graphics::{self, Canvas, Color, DrawMode, DrawParam, Mesh};
 use ggez::GameError;
 use serde::{Serialize, Deserialize};
 use std::collections::HashSet;
-use std::fs;
+use std::env;
 
 #[derive(Eq, PartialEq, Hash, Clone, Copy, Serialize, Deserialize)]
 struct Cell(i32, i32);
 
-struct GameOfLife {
+struct Rules {
+    birth: Vec<usize>,
+    survival: Vec<usize>,
+}
+
+impl Rules {
+    fn from_string(rule_str: &str) -> Result<Self, String> {
+        let parts: Vec<&str> = rule_str.split('/').collect();
+        if parts.len() != 2 || !parts[0].starts_with('B') || !parts[1].starts_with('S') {
+            return Err("Invalid rule format. Expected 'B<number>/S<number>'.".to_string());
+        }
+
+        let birth = parts[0][1..]
+            .chars()
+            .filter_map(|c| c.to_digit(10))
+            .map(|d| d as usize)
+            .collect();
+
+        let survival = parts[1][1..]
+            .chars()
+            .filter_map(|c| c.to_digit(10))
+            .map(|d| d as usize)
+            .collect();
+
+        Ok(Self { birth, survival })
+    }
+}
+
+struct Automata {
     alive_cells: HashSet<Cell>,
     cell_size: f32,
     offset_x: f32,
@@ -17,10 +45,11 @@ struct GameOfLife {
     dragging: bool,
     drag_start: Option<(f32, f32)>,
     running: bool,
+    rules: Rules,
 }
 
-impl GameOfLife {
-    fn new(initial_state: Vec<Cell>, cell_size: f32) -> Self {
+impl Automata {
+    fn new(initial_state: Vec<Cell>, cell_size: f32, rules: Rules) -> Self {
         let alive_cells = initial_state.into_iter().collect();
         Self {
             alive_cells,
@@ -30,6 +59,7 @@ impl GameOfLife {
             dragging: false,
             drag_start: None,
             running: true,
+            rules,
         }
     }
 
@@ -41,7 +71,7 @@ impl GameOfLife {
             let neighbors = self.get_neighbors(cell);
             let live_count = neighbors.iter().filter(|&&n| self.alive_cells.contains(&n)).count();
 
-            if live_count == 2 || live_count == 3 {
+            if self.rules.survival.contains(&live_count) {
                 new_state.insert(cell);
             }
 
@@ -56,7 +86,7 @@ impl GameOfLife {
                     .iter()
                     .filter(|&&n| self.alive_cells.contains(&n))
                     .count();
-                if live_count == 3 {
+                if self.rules.birth.contains(&live_count) {
                     new_state.insert(neighbor);
                 }
             }
@@ -87,25 +117,9 @@ impl GameOfLife {
             self.alive_cells.insert(cell);
         }
     }
-
-    fn save_to_file(&self, filename: &str) -> GameResult {
-        let serialized = serde_json::to_string(&self.alive_cells)
-            .map_err(|e| GameError::CustomError(e.to_string()))?;
-        std::fs::write(filename, serialized)
-            .map_err(|e| GameError::CustomError(e.to_string()))?;
-        Ok(())
-    }
-
-    fn load_from_file(&mut self, filename: &str) -> GameResult {
-        let contents = std::fs::read_to_string(filename)
-            .map_err(|e| GameError::CustomError(e.to_string()))?;
-        self.alive_cells = serde_json::from_str(&contents)
-            .map_err(|e| GameError::CustomError(e.to_string()))?;
-        Ok(())
-    }
 }
 
-impl EventHandler for GameOfLife {
+impl EventHandler for Automata {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         if self.running {
             self.step();
@@ -168,17 +182,8 @@ impl EventHandler for GameOfLife {
 
     fn key_down_event(&mut self, _ctx: &mut Context, key_input: KeyInput, _repeat: bool) -> GameResult {
         if let Some(keycode) = key_input.keycode {
-            match keycode {
-                KeyCode::Space => {
-                    self.running = !self.running;
-                }
-                KeyCode::S => {
-                    self.save_to_file("game_of_life_state.json")?;
-                }
-                KeyCode::L => {
-                    self.load_from_file("game_of_life_state.json")?;
-                }
-                _ => {}
+            if keycode == KeyCode::Space {
+                self.running = !self.running;
             }
         }
         Ok(())
@@ -186,8 +191,17 @@ impl EventHandler for GameOfLife {
 }
 
 fn main() -> GameResult {
-    let cb = ContextBuilder::new("game_of_life", "alskdfjsaodjkf")
-        .window_setup(ggez::conf::WindowSetup::default().title("Conway's Game of Life"))
+    let args: Vec<String> = env::args().collect();
+    let default_rule = "B3/S23".to_string(); // Create a binding for the default rule
+    let rule_str = args.get(1).unwrap_or(&default_rule); // Use the binding here
+
+    let rules = Rules::from_string(rule_str).unwrap_or_else(|err| {
+        eprintln!("Error parsing rules: {}", err);
+        std::process::exit(1);
+    });
+
+    let cb = ContextBuilder::new("automata", "alskdfjsaodjkf")
+        .window_setup(ggez::conf::WindowSetup::default().title("Automata"))
         .window_mode(ggez::conf::WindowMode::default().dimensions(1600.0, 1200.0));
     let (ctx, event_loop) = cb.build()?;
 
@@ -196,6 +210,6 @@ fn main() -> GameResult {
         Cell(52, 51), Cell(51, 52),
     ];
 
-    let game = GameOfLife::new(initial_state, 10.0);
+    let game = Automata::new(initial_state, 10.0, rules);
     event::run(ctx, event_loop, game)
 }
