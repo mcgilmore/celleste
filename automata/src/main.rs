@@ -1,10 +1,13 @@
-use ggez::{Context, ContextBuilder, GameResult, input::keyboard::{KeyCode, KeyInput}, input::mouse::MouseButton};
 use ggez::event::{self, EventHandler};
 use ggez::graphics::{self, Canvas, Color, DrawMode, DrawParam, Mesh};
-use ggez::GameError;
-use serde::{Serialize, Deserialize};
+use ggez::{
+    input::keyboard::{KeyCode, KeyInput},
+    input::mouse::MouseButton,
+    Context, ContextBuilder, GameResult,
+};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::env;
+use std::{env, fs};
 
 #[derive(Eq, PartialEq, Hash, Clone, Copy, Serialize, Deserialize)]
 struct Cell(i32, i32);
@@ -69,7 +72,10 @@ impl Automata {
 
         for &cell in &self.alive_cells {
             let neighbors = self.get_neighbors(cell);
-            let live_count = neighbors.iter().filter(|&&n| self.alive_cells.contains(&n)).count();
+            let live_count = neighbors
+                .iter()
+                .filter(|&&n| self.alive_cells.contains(&n))
+                .count();
 
             if self.rules.survival.contains(&live_count) {
                 new_state.insert(cell);
@@ -82,7 +88,8 @@ impl Automata {
 
         for neighbor in neighbor_counts {
             if !self.alive_cells.contains(&neighbor) {
-                let live_count = self.get_neighbors(neighbor)
+                let live_count = self
+                    .get_neighbors(neighbor)
                     .iter()
                     .filter(|&&n| self.alive_cells.contains(&n))
                     .count();
@@ -117,6 +124,34 @@ impl Automata {
             self.alive_cells.insert(cell);
         }
     }
+
+    fn save_to_file(&self, file_path: &str) {
+        match serde_json::to_string(&self.alive_cells) {
+            Ok(json) => {
+                if let Err(err) = fs::write(file_path, json) {
+                    eprintln!("Failed to save game state: {}", err);
+                } else {
+                    println!("Game state saved to {}", file_path);
+                }
+            }
+            Err(err) => eprintln!("Failed to serialize game state: {}", err),
+        }
+    }
+
+    fn load_from_file(&mut self, file_path: &str) {
+        match fs::read_to_string(file_path) {
+            Ok(json) => {
+                match serde_json::from_str::<HashSet<Cell>>(&json) {
+                    Ok(alive_cells) => {
+                        self.alive_cells = alive_cells;
+                        println!("Game state loaded from {}", file_path);
+                    }
+                    Err(err) => eprintln!("Failed to deserialize game state: {}", err),
+                }
+            }
+            Err(err) => eprintln!("Failed to read game state from file: {}", err),
+        }
+    }
 }
 
 impl EventHandler for Automata {
@@ -144,7 +179,39 @@ impl EventHandler for Automata {
         canvas.finish(ctx)
     }
 
-    fn mouse_button_down_event(&mut self, _ctx: &mut Context, button: MouseButton, x: f32, y: f32) -> GameResult {
+    fn key_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        key_input: KeyInput,
+        _repeat: bool,
+    ) -> GameResult {
+        if let Some(keycode) = key_input.keycode {
+            match keycode {
+                KeyCode::Space => {
+                    // Toggle the `running` state
+                    self.running = !self.running;
+                }
+                KeyCode::S => {
+                    // Save the current state to a file
+                    self.save_to_file("automata_save.json");
+                }
+                KeyCode::L => {
+                    // Load the state from a file
+                    self.load_from_file("automata_save.json");
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
+    fn mouse_button_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        button: MouseButton,
+        x: f32,
+        y: f32,
+    ) -> GameResult {
         if button == MouseButton::Left {
             self.dragging = true;
             self.drag_start = Some((x, y));
@@ -154,7 +221,13 @@ impl EventHandler for Automata {
         Ok(())
     }
 
-    fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, _x: f32, _y: f32) -> GameResult {
+    fn mouse_button_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        button: MouseButton,
+        _x: f32,
+        _y: f32,
+    ) -> GameResult {
         if button == MouseButton::Left {
             self.dragging = false;
             self.drag_start = None;
@@ -162,7 +235,14 @@ impl EventHandler for Automata {
         Ok(())
     }
 
-    fn mouse_motion_event(&mut self, _ctx: &mut Context, _x: f32, _y: f32, dx: f32, dy: f32) -> GameResult {
+    fn mouse_motion_event(
+        &mut self,
+        _ctx: &mut Context,
+        _x: f32,
+        _y: f32,
+        dx: f32,
+        dy: f32,
+    ) -> GameResult {
         if self.dragging {
             self.offset_x += dx;
             self.offset_y += dy;
@@ -176,15 +256,6 @@ impl EventHandler for Automata {
             self.cell_size *= 1.0 + zoom_factor;
         } else if y < 0.0 {
             self.cell_size *= 1.0 - zoom_factor;
-        }
-        Ok(())
-    }
-
-    fn key_down_event(&mut self, _ctx: &mut Context, key_input: KeyInput, _repeat: bool) -> GameResult {
-        if let Some(keycode) = key_input.keycode {
-            if keycode == KeyCode::Space {
-                self.running = !self.running;
-            }
         }
         Ok(())
     }
@@ -206,8 +277,11 @@ fn main() -> GameResult {
     let (ctx, event_loop) = cb.build()?;
 
     let initial_state = vec![
-        Cell(50, 50), Cell(51, 50), Cell(52, 50),
-        Cell(52, 51), Cell(51, 52),
+        Cell(50, 50),
+        Cell(51, 50),
+        Cell(52, 50),
+        Cell(52, 51),
+        Cell(51, 52),
     ];
 
     let game = Automata::new(initial_state, 10.0, rules);
