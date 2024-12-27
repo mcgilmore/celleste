@@ -7,7 +7,46 @@ use ggez::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::{env, fs};
+use std::fs;
+use clap::{Parser, CommandFactory};
+
+#[derive(Parser)]
+#[command(
+    author,
+    version,
+    about = "Automata - A 2D cellular automaton",
+    long_about = "Automata - A 2D cellular automaton\n\n\
+The rules can be customized using B<number>/S<number> notation. Default is Conway's Game of Life (B3/S23).\n\n\
+Controls:\n\
+- Space: Pause/Resume simulation\n\
+- Right Click: Add a cell\n\
+- S: Save the current state to the specified file\n\
+- L: Load a state from the specified file"
+)]
+struct Cli {
+    /// Path to the save file (default: ./automata_save.json)
+    #[arg(short, long, default_value_t = get_default_save_file(), help = "Path to save the automata state.")]
+
+    save_file: String,
+
+    /// Rules in B<number>/S<number> format (default: B3/S23)
+    #[arg(short, long, default_value = "B3/S23", help = "Rules for the automaton in B<number>/S<number> format.")]
+
+    rules: String,
+
+    /// Path to load a saved automata state
+    #[arg(short = 'l', long, help = "Path to load a previously saved automata state.")]
+    load_file: Option<String>,
+}
+
+fn get_default_save_file() -> String {
+    let current_dir = std::env::current_dir().expect("Failed to get current directory");
+    let default_path = current_dir.join("automata_save.json");
+    default_path
+        .to_str()
+        .expect("Failed to convert default path to string")
+        .to_string()
+}
 
 #[derive(Eq, PartialEq, Hash, Clone, Copy, Serialize, Deserialize)]
 struct Cell(i32, i32);
@@ -49,6 +88,7 @@ struct Automata {
     drag_start: Option<(f32, f32)>,
     running: bool,
     rules: Rules,
+    save_file: String,
 }
 
 impl Automata {
@@ -63,7 +103,12 @@ impl Automata {
             drag_start: None,
             running: true,
             rules,
+            save_file: "./automata_save.json".to_string(),
         }
+    }
+
+    fn set_save_file(&mut self, file_path: String) {
+        self.save_file = file_path;
     }
 
     fn step(&mut self) {
@@ -193,11 +238,12 @@ impl EventHandler for Automata {
                 }
                 KeyCode::S => {
                     // Save the current state to a file
-                    self.save_to_file("automata_save.json");
+                    self.save_to_file(&self.save_file);
                 }
                 KeyCode::L => {
-                    // Load the state from a file
-                    self.load_from_file("automata_save.json");
+                    // Clone the save file path to avoid immutable borrow conflicts
+                    let save_file = self.save_file.clone();
+                    self.load_from_file(&save_file);
                 }
                 _ => {}
             }
@@ -262,11 +308,9 @@ impl EventHandler for Automata {
 }
 
 fn main() -> GameResult {
-    let args: Vec<String> = env::args().collect();
-    let default_rule = "B3/S23".to_string(); // Create a binding for the default rule
-    let rule_str = args.get(1).unwrap_or(&default_rule); // Use the binding here
+    let cli = Cli::parse();
 
-    let rules = Rules::from_string(rule_str).unwrap_or_else(|err| {
+    let rules = Rules::from_string(&cli.rules).unwrap_or_else(|err| {
         eprintln!("Error parsing rules: {}", err);
         std::process::exit(1);
     });
@@ -276,6 +320,7 @@ fn main() -> GameResult {
         .window_mode(ggez::conf::WindowMode::default().dimensions(1600.0, 1200.0));
     let (ctx, event_loop) = cb.build()?;
 
+    // Default initial state
     let initial_state = vec![
         Cell(50, 50),
         Cell(51, 50),
@@ -284,6 +329,17 @@ fn main() -> GameResult {
         Cell(51, 52),
     ];
 
-    let game = Automata::new(initial_state, 10.0, rules);
+    let mut game = Automata::new(initial_state.clone(), 10.0, rules);
+
+    // Set the save file from the CLI argument
+    game.set_save_file(cli.save_file);
+
+    // Load from the provided file if specified
+    if let Some(load_file) = cli.load_file {
+        game.load_from_file(&load_file);
+    } else {
+        println!("No load file provided. Using default");
+    }
+
     event::run(ctx, event_loop, game)
 }
