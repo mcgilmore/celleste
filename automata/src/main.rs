@@ -1,3 +1,4 @@
+use clap::{CommandFactory, Parser};
 use ggez::event::{self, EventHandler};
 use ggez::graphics::{self, Canvas, Color, DrawMode, DrawParam, Mesh};
 use ggez::{
@@ -8,14 +9,13 @@ use ggez::{
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
-use clap::{Parser, CommandFactory};
 
 #[derive(Parser)]
 #[command(
     author,
     version,
-    about = "Automata - A 2D cellular automaton",
-    long_about = "Automata - A 2D cellular automaton\n\n\
+    about = "Celleste - A 2D cellular automaton",
+    long_about = "Celleste - A 2D cellular automaton\n\n\
 The rules can be customized using B<number>/S<number> notation. Default is Conway's Game of Life (B3/S23).\n\n\
 Controls:\n\
 - Space: Pause/Resume simulation\n\
@@ -26,22 +26,29 @@ Controls:\n\
 struct Cli {
     /// Path to the save file (default: ./automata_save.json)
     #[arg(short, long, default_value_t = get_default_save_file(), help = "Path to save the automata state.")]
-
     save_file: String,
 
     /// Rules in B<number>/S<number> format (default: B3/S23)
-    #[arg(short, long, default_value = "B3/S23", help = "Rules for the automaton in B<number>/S<number> format.")]
-
+    #[arg(
+        short,
+        long,
+        default_value = "B3/S23",
+        help = "Rules for the automaton in B<number>/S<number> format."
+    )]
     rules: String,
 
     /// Path to load a saved automata state
-    #[arg(short = 'l', long, help = "Path to load a previously saved automata state.")]
+    #[arg(
+        short = 'l',
+        long,
+        help = "Path to load a previously saved automata state."
+    )]
     load_file: Option<String>,
 }
 
 fn get_default_save_file() -> String {
     let current_dir = std::env::current_dir().expect("Failed to get current directory");
-    let default_path = current_dir.join("automata_save.json");
+    let default_path = current_dir.join("celleste_save.json");
     default_path
         .to_str()
         .expect("Failed to convert default path to string")
@@ -185,15 +192,13 @@ impl Automata {
 
     fn load_from_file(&mut self, file_path: &str) {
         match fs::read_to_string(file_path) {
-            Ok(json) => {
-                match serde_json::from_str::<HashSet<Cell>>(&json) {
-                    Ok(alive_cells) => {
-                        self.alive_cells = alive_cells;
-                        println!("Game state loaded from {}", file_path);
-                    }
-                    Err(err) => eprintln!("Failed to deserialize game state: {}", err),
+            Ok(json) => match serde_json::from_str::<HashSet<Cell>>(&json) {
+                Ok(alive_cells) => {
+                    self.alive_cells = alive_cells;
+                    println!("Game state loaded from {}", file_path);
                 }
-            }
+                Err(err) => eprintln!("Failed to deserialize game state: {}", err),
+            },
             Err(err) => eprintln!("Failed to read game state from file: {}", err),
         }
     }
@@ -315,8 +320,8 @@ fn main() -> GameResult {
         std::process::exit(1);
     });
 
-    let cb = ContextBuilder::new("automata", "alskdfjsaodjkf")
-        .window_setup(ggez::conf::WindowSetup::default().title("Automata"))
+    let cb = ContextBuilder::new("Celleste", "alskdfjsaodjkf")
+        .window_setup(ggez::conf::WindowSetup::default().title("Celleste"))
         .window_mode(ggez::conf::WindowMode::default().dimensions(1600.0, 1200.0));
     let (ctx, event_loop) = cb.build()?;
 
