@@ -3,7 +3,7 @@ name = "celleste"
 version = "0.1.2"
 description = "A flexible 2D cellular automaton"
 license = "GPL-3.0"
-repository = "https://github.com/mcgilmore/automata/automata"
+repository = "https://github.com/mcgilmore/celleste"
 readme = "README.md"
 edition = "2021"
 
