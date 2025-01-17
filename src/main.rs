@@ -1,4 +1,5 @@
 use clap::{CommandFactory, Parser};
+
 use ggez::event::{self, EventHandler};
 use ggez::graphics::{self, Canvas, Color, DrawMode, DrawParam, Mesh};
 use ggez::{
@@ -6,7 +7,9 @@ use ggez::{
     input::mouse::MouseButton,
     Context, ContextBuilder, GameResult,
 };
+
 use serde::{Deserialize, Serialize};
+
 use std::collections::HashSet;
 use std::fs;
 
@@ -20,12 +23,17 @@ The rules can be customized using B<number>/S<number> notation. Default is Conwa
 Controls:\n\
 - Space: Pause/Resume simulation\n\
 - Right Click: Add a cell\n\
-- S: Save the current state to the specified file\n\
+- S: Save the current state\n\
 - L: Load a state from the specified file"
 )]
 struct Cli {
     /// Path to the save file (default: ./celleste_save.json)
-    #[arg(short, long, default_value_t = get_default_save_file(), help = "Path to save the automaton state.")]
+    #[arg(
+        short,
+        long, 
+        default_value_t = get_default_save_file(), 
+        help = "Path to save the automaton state."
+    )]
     save_file: String,
 
     /// Rules in B<number>/S<number> format (default: B3/S23)
@@ -75,7 +83,6 @@ impl Rules {
         if parts.len() != 2 || !parts[0].starts_with('B') || !parts[1].starts_with('S') {
             return Err("Invalid rule format. Expected 'B<number>/S<number>'.".to_string());
         }
-
         let birth = parts[0][1..]
             .chars()
             .filter_map(|c| c.to_digit(10))
@@ -116,7 +123,7 @@ impl Automaton {
             drag_start: None,
             running: true,
             rules,
-            save_file: "./automaton_save.json".to_string(),
+            save_file: "./celleste_save.json".to_string(),
         }
     }
 
