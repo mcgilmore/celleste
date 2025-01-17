@@ -24,8 +24,8 @@ Controls:\n\
 - L: Load a state from the specified file"
 )]
 struct Cli {
-    /// Path to the save file (default: ./automata_save.json)
-    #[arg(short, long, default_value_t = get_default_save_file(), help = "Path to save the automata state.")]
+    /// Path to the save file (default: ./celleste_save.json)
+    #[arg(short, long, default_value_t = get_default_save_file(), help = "Path to save the automaton state.")]
     save_file: String,
 
     /// Rules in B<number>/S<number> format (default: B3/S23)
@@ -37,11 +37,11 @@ struct Cli {
     )]
     rules: String,
 
-    /// Path to load a saved automata state
+    /// Path to load a saved automaton state
     #[arg(
         short = 'l',
         long,
-        help = "Path to load a previously saved automata state."
+        help = "Path to load a previously saved automaton state."
     )]
     load_file: Option<String>,
 }
@@ -57,6 +57,12 @@ fn get_default_save_file() -> String {
 
 #[derive(Eq, PartialEq, Hash, Clone, Copy, Serialize, Deserialize)]
 struct Cell(i32, i32);
+
+#[derive(Serialize, Deserialize)]
+struct SaveState {
+    alive_cells: HashSet<Cell>,
+    rules: String,
+}
 
 struct Rules {
     birth: Vec<usize>,
@@ -86,7 +92,7 @@ impl Rules {
     }
 }
 
-struct Automata {
+struct Automaton {
     alive_cells: HashSet<Cell>,
     cell_size: f32,
     offset_x: f32,
@@ -98,7 +104,7 @@ struct Automata {
     save_file: String,
 }
 
-impl Automata {
+impl Automaton {
     fn new(initial_state: Vec<Cell>, cell_size: f32, rules: Rules) -> Self {
         let alive_cells = initial_state.into_iter().collect();
         Self {
@@ -110,7 +116,7 @@ impl Automata {
             drag_start: None,
             running: true,
             rules,
-            save_file: "./automata_save.json".to_string(),
+            save_file: "./automaton_save.json".to_string(),
         }
     }
 
@@ -178,7 +184,14 @@ impl Automata {
     }
 
     fn save_to_file(&self, file_path: &str) {
-        match serde_json::to_string(&self.alive_cells) {
+        let save_state = SaveState {
+            alive_cells: self.alive_cells.clone(),
+            rules: format!("B{}/S{}", 
+                self.rules.birth.iter().map(|b| b.to_string()).collect::<String>(),
+                self.rules.survival.iter().map(|s| s.to_string()).collect::<String>()
+            ),
+        };
+        match serde_json::to_string(&save_state) {
             Ok(json) => {
                 if let Err(err) = fs::write(file_path, json) {
                     eprintln!("Failed to save game state: {}", err);
@@ -192,10 +205,14 @@ impl Automata {
 
     fn load_from_file(&mut self, file_path: &str) {
         match fs::read_to_string(file_path) {
-            Ok(json) => match serde_json::from_str::<HashSet<Cell>>(&json) {
-                Ok(alive_cells) => {
-                    self.alive_cells = alive_cells;
-                    println!("Game state loaded from {}", file_path);
+            Ok(json) => match serde_json::from_str::<SaveState>(&json) {
+                Ok(save_state) => {
+                    self.alive_cells = save_state.alive_cells;
+                    match Rules::from_string(&save_state.rules) {
+                        Ok(rules) => self.rules = rules,
+                        Err(err) => eprintln!("Failed to parse rules from save state: {}", err),
+                    }
+                    println!("Game state and rules loaded from {}", file_path);
                 }
                 Err(err) => eprintln!("Failed to deserialize game state: {}", err),
             },
@@ -204,7 +221,7 @@ impl Automata {
     }
 }
 
-impl EventHandler for Automata {
+impl EventHandler for Automaton {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         if self.running {
             self.step();
@@ -334,7 +351,7 @@ fn main() -> GameResult {
         Cell(51, 52),
     ];
 
-    let mut game = Automata::new(initial_state.clone(), 10.0, rules);
+    let mut game = Automaton::new(initial_state.clone(), 10.0, rules);
 
     // Set the save file from the CLI argument
     game.set_save_file(cli.save_file);

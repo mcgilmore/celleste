@@ -1,9 +1,0 @@
-[package]
-name = "bzr"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-clap = "4.5.23"
-ggez = "0.9.3"
-rayon = "1.10.0"
