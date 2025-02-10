@@ -1,3 +1,6 @@
 .DS_Store
 target
 celleste_save.json
+# pixi environments
+.pixi
+*.egg-info

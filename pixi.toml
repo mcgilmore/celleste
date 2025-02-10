@@ -1,0 +1,14 @@
+[project]
+authors = ["mcgilmore <michael_gilmore@live.com>"]
+channels = ["conda-forge"]
+name = "celleste"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+build = "cargo build --release"
+run = "cargo run"
+clean = "cargo clean"
+
+[dependencies]
+rust = ">=1.84.0,<1.85"
