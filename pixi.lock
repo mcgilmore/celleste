@@ -13,8 +13,6 @@ packages:
   md5: c36f037e209638e8713ed6abee2ce3d8
   depends:
   - rust-std-aarch64-apple-darwin 1.84.0 hf6ec828_0
-  arch: arm64
-  platform: osx
   license: MIT
   license_family: MIT
   size: 208393099
