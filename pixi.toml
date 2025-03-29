@@ -3,11 +3,11 @@ authors = ["mcgilmore <michael_gilmore@live.com>"]
 channels = ["conda-forge"]
 name = "celleste"
 platforms = ["osx-arm64"]
-version = "0.1.0"
+version = "0.1.3"
 
 [tasks]
 build = "cargo build --release"
-run = "cargo run"
+start = "cargo run"
 clean = "cargo clean"
 
 [dependencies]

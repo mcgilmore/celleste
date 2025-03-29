@@ -1,4 +1,4 @@
-use clap::{CommandFactory, Parser};
+use clap::{Parser};
 
 use ggez::event::{self, EventHandler};
 use ggez::graphics::{self, Canvas, Color, DrawMode, DrawParam, Mesh};
@@ -10,7 +10,7 @@ use ggez::{
 
 use serde::{Deserialize, Serialize};
 
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::fs;
 
 #[derive(Parser)]
@@ -132,36 +132,29 @@ impl Automaton {
     }
 
     fn step(&mut self) {
-        let mut new_state = HashSet::new();
-        let mut neighbor_counts = HashSet::new();
-
+        // Accumulate counts of live neighbors for every cell
+        let mut neighbor_counts: HashMap<Cell, usize> = HashMap::new();
         for &cell in &self.alive_cells {
-            let neighbors = self.get_neighbors(cell);
-            let live_count = neighbors
-                .iter()
-                .filter(|&&n| self.alive_cells.contains(&n))
-                .count();
-
-            if self.rules.survival.contains(&live_count) {
-                new_state.insert(cell);
-            }
-
-            for &neighbor in &neighbors {
-                neighbor_counts.insert(neighbor);
+            // For each neighbor of a live cell, increment its count
+            for neighbor in self.get_neighbors(cell) {
+                *neighbor_counts.entry(neighbor).or_insert(0) += 1;
             }
         }
 
-        for neighbor in neighbor_counts {
-            if !self.alive_cells.contains(&neighbor) {
-                let live_count = self
-                    .get_neighbors(neighbor)
-                    .iter()
-                    .filter(|&&n| self.alive_cells.contains(&n))
-                    .count();
-                if self.rules.birth.contains(&live_count) {
-                    new_state.insert(neighbor);
-                }
-            }
+        let mut new_state = HashSet::new();
+        // Evaluate the new state based on neighbor counts
+        for (cell, count) in neighbor_counts {
+             if self.alive_cells.contains(&cell) {
+                 // For live cells, check if they survive
+                 if self.rules.survival.contains(&count) {
+                      new_state.insert(cell);
+                 }
+             } else {
+                 // For dead cells, check if they are born
+                 if self.rules.birth.contains(&count) {
+                      new_state.insert(cell);
+                 }
+             }
         }
 
         self.alive_cells = new_state;
@@ -238,6 +231,7 @@ impl EventHandler for Automaton {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let mut canvas = Canvas::from_frame(ctx, Color::BLACK);
+        let mut mb = graphics::MeshBuilder::new();
 
         for &cell in &self.alive_cells {
             let rect = graphics::Rect::new(
@@ -246,10 +240,12 @@ impl EventHandler for Automaton {
                 self.cell_size,
                 self.cell_size,
             );
-            let rectangle = Mesh::new_rectangle(ctx, DrawMode::fill(), rect, Color::WHITE)?;
-            canvas.draw(&rectangle, DrawParam::default());
+            mb.rectangle(DrawMode::fill(), rect, Color::WHITE)?;
         }
 
+        let mesh_data = mb.build();
+        let mesh = Mesh::from_data(ctx, mesh_data);
+        canvas.draw(&mesh, DrawParam::default());
         canvas.finish(ctx)
     }
 
