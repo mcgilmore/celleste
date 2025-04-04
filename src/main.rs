@@ -332,6 +332,7 @@ impl EventHandler for Automaton {
     }
 }
 
+// B12356/S12356
 fn main() -> GameResult {
     let cli = Cli::parse();
 
@@ -344,14 +345,14 @@ fn main() -> GameResult {
         .window_setup(ggez::conf::WindowSetup::default().title("Celleste"))
         .window_mode(ggez::conf::WindowMode::default().dimensions(1600.0, 1200.0));
     let (ctx, event_loop) = cb.build()?;
-
+    
     // Default initial state
     let initial_state = vec![
         Cell(50, 50),
-        Cell(51, 50),
-        Cell(52, 50),
-        Cell(52, 51),
-        Cell(51, 52),
+        Cell(50, 51),
+        Cell(50, 52),
+        Cell(49, 50),
+        Cell(51, 51),
     ];
 
     let mut game = Automaton::new(initial_state.clone(), 10.0, rules);
