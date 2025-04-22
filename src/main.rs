@@ -1,8 +1,8 @@
-use clap::{Parser};
+use clap::Parser;
 
-use ggez::event::{self, EventHandler};
-use ggez::graphics::{self, Canvas, Color, DrawMode, DrawParam, Mesh};
 use ggez::{
+    event::{self, EventHandler},
+    graphics::{self, Canvas, Color, DrawMode, DrawParam, Mesh, Text},
     input::keyboard::{KeyCode, KeyInput},
     input::mouse::MouseButton,
     Context, ContextBuilder, GameResult,
@@ -52,6 +52,14 @@ struct Cli {
         help = "Path to load a previously saved automaton state."
     )]
     load_file: Option<String>,
+
+     /// Show generation timer
+     #[arg(
+        short = 'g',
+        long,
+        help = "Show generation timer"
+    )]
+    generation: bool,
 }
 
 fn get_default_save_file() -> String {
@@ -99,7 +107,7 @@ impl Rules {
     }
 }
 
-struct Automaton {
+struct Celleste {
     alive_cells: HashSet<Cell>,
     cell_size: f32,
     offset_x: f32,
@@ -109,10 +117,12 @@ struct Automaton {
     running: bool,
     rules: Rules,
     save_file: String,
+    clock: bool,
+    generation: usize
 }
 
-impl Automaton {
-    fn new(initial_state: Vec<Cell>, cell_size: f32, rules: Rules) -> Self {
+impl Celleste {
+    fn new(initial_state: Vec<Cell>, cell_size: f32, rules: Rules, clock: bool) -> Self {
         let alive_cells = initial_state.into_iter().collect();
         Self {
             alive_cells,
@@ -124,6 +134,8 @@ impl Automaton {
             running: true,
             rules,
             save_file: "./celleste_save.json".to_string(),
+            clock,
+            generation: 1,
         }
     }
 
@@ -158,6 +170,7 @@ impl Automaton {
         }
 
         self.alive_cells = new_state;
+        self.generation += 1;
     }
 
     fn get_neighbors(&self, cell: Cell) -> Vec<Cell> {
@@ -221,7 +234,7 @@ impl Automaton {
     }
 }
 
-impl EventHandler for Automaton {
+impl EventHandler for Celleste {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         if self.running {
             self.step();
@@ -242,10 +255,16 @@ impl EventHandler for Automaton {
             );
             mb.rectangle(DrawMode::fill(), rect, Color::WHITE)?;
         }
-
+        
         let mesh_data = mb.build();
         let mesh = Mesh::from_data(ctx, mesh_data);
         canvas.draw(&mesh, DrawParam::default());
+
+        if self.clock {
+            let gen_text = Text::new(format!("Generation: {}", self.generation));
+            canvas.draw(&gen_text, DrawParam::default().dest([10.0, 10.0]));
+        }
+
         canvas.finish(ctx)
     }
 
@@ -355,7 +374,7 @@ fn main() -> GameResult {
         Cell(51, 51),
     ];
 
-    let mut game = Automaton::new(initial_state.clone(), 10.0, rules);
+    let mut game = Celleste::new(initial_state.clone(), 10.0, rules, cli.generation);
 
     // Set the save file from the CLI argument
     game.set_save_file(cli.save_file);
