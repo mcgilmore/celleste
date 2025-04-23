@@ -55,11 +55,11 @@ struct Cli {
 
      /// Show generation timer
      #[arg(
-        short = 'g',
+        short = 'c',
         long,
-        help = "Show generation timer"
+        help = "Don't show generation clock"
     )]
-    generation: bool,
+    no_clock: bool,
 }
 
 fn get_default_save_file() -> String {
@@ -131,7 +131,7 @@ impl Celleste {
             offset_y: 0.0,
             dragging: false,
             drag_start: None,
-            running: true,
+            running: false,
             rules,
             save_file: "./celleste_save.json".to_string(),
             clock,
@@ -260,7 +260,7 @@ impl EventHandler for Celleste {
         let mesh = Mesh::from_data(ctx, mesh_data);
         canvas.draw(&mesh, DrawParam::default());
 
-        if self.clock {
+        if !self.clock {
             let gen_text = Text::new(format!("Generation: {}", self.generation));
             canvas.draw(&gen_text, DrawParam::default().dest([10.0, 10.0]));
         }
@@ -374,7 +374,7 @@ fn main() -> GameResult {
         Cell(51, 51),
     ];
 
-    let mut game = Celleste::new(initial_state.clone(), 10.0, rules, cli.generation);
+    let mut game = Celleste::new(initial_state.clone(), 10.0, rules, cli.no_clock);
 
     // Set the save file from the CLI argument
     game.set_save_file(cli.save_file);
